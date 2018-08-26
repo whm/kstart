@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+
+# Enable compiler hardening flags.
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+# Enable verbose testing.
+export C_TAP_VERBOSE = 1
+
+DEB_HOST_ARCH_OS ?= $(shell dpkg-architecture -qDEB_HOST_ARCH_OS)
+ifeq ($(DEB_HOST_ARCH_OS),linux)
+    SETPAG = --enable-setpag
+else
+    SETPAG = --disable-setpag
+endif
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	dh_auto_configure -- --enable-reduced-depends $(SETPAG) \
+	    --without-libkafs --with-aklog=/usr/bin/aklog
