@@ -1,0 +1,311 @@
+                            kstart release 4.2
+           (kinit daemon with keytab, renewal, and AFS support)
+
+         Originally written by Robert Morgan and Booker C. Bense
+          Currently maintained by Russ Allbery <eagle@eyrie.org>
+
+  Copyright 2015 Russ Allbery <eagle@eyrie.org>.  Copyright 1995, 1996,
+  1997, 1999, 2000, 2001, 2002, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
+  2011, 2012, 2014 The Board of Trustees of the Leland Stanford Junior
+  University.  This software is distributed under a BSD-style license.
+  Please see the section LICENSE below for more information.
+
+BLURB
+
+  k5start and krenew are modified versions of kinit which add support for
+  running as a daemon to maintain a ticket cache, running a command with
+  credentials from a keytab and maintaining a ticket cache until that
+  command completes, obtaining AFS tokens (via an external aklog) after
+  obtaining tickets, and creating an AFS PAG for a command.  They are
+  primarily useful in conjunction with long-running jobs; for moving
+  ticket handling code out of servers, cron jobs, or daemons; and to
+  obtain tickets and AFS tokens with a single command.
+
+DESCRIPTION
+
+  k5start is a modified version of kinit.  It can be used as a substitute
+  for kinit (with some additional helpful options), but it can also obtain
+  credentials automatically from a keytab.  It can run as a daemon, waking
+  up periodically to refresh credentials using that keytab, and can also
+  check for the validity of tickets and only refresh if they're no longer
+  valid.
+
+  Some of these capabilities have been included in Kerberos's kinit, but
+  the ability to maintain tickets while running as a daemon has not and is
+  useful for servers that need to use Kerberos.  Using kstart allows the
+  ticket handling to be moved out of the server into a separate process
+  dedicated just to that purpose.
+
+  k5start can optionally run an external program whenever the ticket is
+  refreshed to obtain an AFS token, and therefore can be used in
+  conjunction with a program like aklog or afslog to maintain an AFS
+  token.  When built with support for AFS PAGs, it can also put the
+  program in its own PAG so that its authentication doesn't affect any
+  other programs.
+
+  krenew is identical to k5start except that rather than obtaining new
+  tickets from a password or keytab, it renews an existing renewable
+  ticket cache.  It can be used to periodically renew tickets and
+  optionally AFS tokens for long-running processes in cases where using a
+  keytab is inappropriate (such as users running their own jobs with their
+  own credentials).
+
+REQUIREMENTS
+
+  As Kerberos programs, k5start and krenew require Kerberos libraries to
+  link against.  They have only been thoroughly tested with the MIT
+  Kerberos and Heimdal libraries on Debian, but should work with the
+  included Kerberos libraries on many other platforms.
+
+  Other than that, all you should need is a suitable C compiler.  Neither
+  program has been tested on non-Unix systems.
+
+  If you want the -t option to work, you need a program to obtain AFS
+  tokens from Kerberos tickets.  You can specify the program to use on
+  your system with the --with-aklog option to configure; if that option is
+  not given, the first of aklog or afslog that is found on your path at
+  configure time will be used.
+
+  For AFS PAG support, one of Linux, Mac OS X, Solaris 11, the kafs
+  library that comes with either Heimdal or KTH Kerberos, the kopenafs
+  library that comes with newer OpenAFS, AFS header files (on any other
+  platform besides AIX or IRIX), or AFS libraries (on AIX and IRIX) is
+  required.  AIX binaries with AFS PAG support may not run on AIX systems
+  that do not have an AFS client installed due to how AIX handles system
+  calls.
+
+  To run the test suite, you must have the Perl 5.006 or later and the
+  modules Test::More and Test::Pod installed.  Test::More comes with Perl
+  5.8 or later and Test::Pod is available from CPAN.  You will also need
+  the kinit and klist commands to be from MIT Kerberos, not Heimdal.
+
+  To check spelling in the POD documentation, Pod::Spell (available from
+  CPAN) and either aspell or ispell with the american dictionary are also
+  required.  The user's path is searched for aspell or ispell and aspell
+  is preferred.  Spelling tests are disabled by default since spelling
+  dictionaries differ too much between systems.
+
+  To enable tests that may be sensitive to the local environment or that
+  produce a lot of false positives without uncovering many problems,
+  including the spelling tests, set RRA_MAINTAINER_TESTS to a true value.
+
+  To bootstrap from a Git checkout, or if you change the Automake files
+  and need to regenerate Makefile.in, you will need Automake 1.11 or
+  later.  For bootstrap or if you change configure.ac or any of the m4
+  files it includes and need to regenerate configure or config.h.in, you
+  will need Autoconf 2.64 or later.  Perl is also required to generate
+  the manual pages from a fresh Git checkout.
+
+INSTALLATION
+
+  Basic installation is simple.  Just run:
+
+      ./configure
+      make
+      make install
+
+  Pass --enable-silent-rules to configure for a quieter build (similar to
+  the Linux kernel).  Use make warnings instead of make to build with full
+  GCC compiler warnings (requires a relatively current version of GCC).
+
+  This will build k5start and krenew and install them in /usr/local/bin
+  with man pages in /usr/local/man/man1.  You may need to be root to run
+  make install.  To install in a different location, specify a different
+  location with the --prefix option to configure, as in:
+
+      ./configure --prefix=/opt/sw
+
+  Binaries would then be installed in /opt/sw/bin and man pages in
+  /opt/sw/man/man1.  Alternately, --bindir and --mandir can be given to
+  change the installation locations of the binaries and manual pages
+  separately.
+
+  Normally, configure will use krb5-config to determine the flags to use
+  to compile with your Kerberos libraries.  If krb5-config isn't found, it
+  will look for the standard Kerberos libraries in locations already
+  searched by your compiler.  If the the krb5-config script first in your
+  path is not the one corresponding to the Kerberos libraries you want to
+  use or if your Kerberos libraries and includes aren't in a location
+  searched by default by your compiler, you need to specify
+  --with-krb5=PATH:
+
+      ./configure --with-krb5=/usr/pubsw
+
+  You can also individually set the paths to the include directory and the
+  library directory with --with-krb5-include and --with-krb5-lib.  You may
+  need to do this if Autoconf can't figure out whether to use lib, lib32,
+  or lib64 on your platform.
+
+  To specify a particular krb5-config script to use, either set the
+  PATH_KRB5_CONFIG environment variable or pass it to configure like:
+
+      ./configure PATH_KRB5_CONFIG=/path/to/krb5-config
+
+  To not use krb5-config and force library probing even if there is a
+  krb5-config script on your path, set PATH_KRB5_CONFIG to a nonexistent
+  path:
+
+      ./configure PATH_KRB5_CONFIG=/nonexistent
+
+  If you are using aklog, afslog, or some other program to obtain AFS
+  tokens, give its path to configure with the --with-aklog option, as in:
+
+      ./configure --with-aklog=/usr/local/bin/aklog
+
+  This program will be run when the -t option is given to k5start or
+  krenew.
+
+  To enable support for AFS PAGs, pass the --enable-setpag flag to
+  configure.  It is not enabled by default.  On platforms other than Linux
+  and without the kafs library, you will need to add the --with-afs flag
+  specifying the location of your AFS includes and libraries unless
+  they're on your standard search path.  For example:
+
+      ./configure --enable-setpag --with-afs=/usr/afsws
+
+  When enabled, k5start and krenew will always create a new PAG before
+  authentication when running a specific command and when aklog is being
+  run.
+
+  You can build kstart in a different directory from the source if you
+  wish.  To do this, create a new empty directory, cd to that directory,
+  and then give the path to configure when running configure.  Everything
+  else should work as above.
+
+  You can pass the --enable-reduced-depends flag to configure to try to
+  minimize the shared library dependencies encoded in the binaries.  This
+  omits from the link line all the libraries included solely because the
+  Kerberos libraries depend on them and instead links the programs only
+  against libraries whose APIs are called directly.  This will only work
+  with shared Kerberos libraries and will only work on platforms where
+  shared libraries properly encode their own dependencies (such as Linux).
+  It is intended primarily for building packages for Linux distributions
+  to avoid encoding unnecessary shared library dependencies that make
+  shared library migrations more difficult.  If none of the above made any
+  sense to you, don't bother with this flag.
+
+TESTING
+
+  kstart comes with the beginnings of a test suite, which you can run
+  with:
+
+      make check
+
+  In order to test the client in a meaningful way, you will need to do
+  some preparatory work before running the test suite.  Review the file:
+
+      tests/data/README
+
+  and follow the instructions in that file to enable the full test suite.
+
+  The test suite also requires some additional software be installed that
+  isn't otherwise used by kstart.  See REQUIREMENTS above for the full
+  list of requirements for the test suite.  The test driver attempts to
+  selectively skip those tests for which the necessary configuration is
+  not available, but this has not yet been fully tested in all of its
+  possible permutations (and the test suite cannot cope with a missing
+  Test::More module).
+
+  If a test fails, you can run a single test with verbose output via:
+
+      tests/runtests -o <name-of-test>
+
+  Do this instead of running the test program directly since it will
+  ensure that necessary environment variables are set up.
+
+HOMEPAGE AND SOURCE REPOSITORY
+
+  The kstart web page at:
+
+      http://www.eyrie.org/~eagle/software/kstart/
+
+  will always have the current version of this package, the current
+  documentation, and pointers to any additional resources.
+
+  kstart is maintained using Git.  You can access the current source by
+  cloning the repository at:
+
+      git://git.eyrie.org/kerberos/kstart.git
+
+  or view the repository via the web at:
+
+      http://git.eyrie.org/?p=kerberos/kstart.git
+
+THANKS
+
+  To Navid Golpayegani, for contributing the initial implementation of the
+  -b option to background after the initial authentication and the -p
+  option to save the PID in a file.
+
+  To Buck Huppmann, for contributing an RPM spec file and suggesting
+  krenew.
+
+  To Adam Megacz, for pointing out that checking the executability of the
+  aklog program isn't necessary and for contributing the code to propagate
+  signals to a child process.
+
+  To Quanah Gibson-Mount, for pointing out various build system issues and
+  missing documentation.
+
+  To Sidney Cammeresi, for catching a missing include in krenew and for
+  providing information and suggestions about Mac OS X's default ticket
+  cache and its effects on the -b option of k5start and krenew.
+
+  To Thomas Kula, for pointing out that k_hasafs has to be called before
+  k_setpag when using the kafs functions.
+
+  To Thomas Weiss, for noticing that code restructuring caused the
+  argument to -H to be ignored in k5start and that -H and -K should be
+  diagnosed as mutually exclusive.
+
+  To Howard Wilkinson, for the initial version of the -o, -g, and -m
+  support and further debugging of it.
+
+  To Sascha Tandel, for the initial version of -c support and reports of
+  build problems when the AFS libauthent and libafsrpc libraries didn't
+  work.
+
+  To Gautam Iyer, for the initial version of -H support in krenew.
+
+  To Mike Horansky, for the idea of copying the current ticket cache when
+  running krenew with a command, thereby saving the ticket cache from
+  destruction when the user logs out.
+
+LICENSE
+
+  The kstart package as a whole covered by the following copyright
+  statement and license:
+
+    Copyright 2015 Russ Allbery <eagle@eyrie.org>
+    Copyright 1995, 1996, 1997, 1999, 2000, 2001, 2002, 2004, 2005, 2006,
+        2007, 2008, 2009, 2010, 2011, 2012, 2014 The Board of Trustees of
+        the Leland Stanford Junior University
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+  All individual files without an explicit exception below are released
+  under this license.  Some files may have additional copyright holders as
+  noted in those files.  There is detailed information about the licensing
+  of each file in the LICENSE file in this distribution.
+
+  Some files in this distribution are individually released under
+  different licenses, all of which are compatible with the above general
+  package license but which may require preservation of additional
+  notices.  All required notices are preserved in the LICENSE file.

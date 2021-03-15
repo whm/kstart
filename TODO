@@ -1,0 +1,72 @@
+                            kstart To-Do List
+
+k5start:
+
+ * Attempt to renew the ticket before prompting the user for a new
+   password when run with the -H flag with a ticket that will be expiring.
+
+ * Provide a flag like -H that checks the status of the ticket but
+   just exits with a zero or non-zero exit status instead of prompting.
+
+ * Add a flag saying to start a command in a PAG and with tokens and then
+   keep running even if the command exits.  This would be useful to spawn
+   a long-running daemon inside a PAG and then maintain its tokens, even
+   if k5start and the daemon then become detached and have to be stopped
+   separately.
+
+ * Relax the requirement to use keytabs when running a command and support
+   prompting for the authentication password before starting the command.
+   In this case, there's no reason for k5start to keep running once the
+   command has been started, so it can simply exit after spawning the
+   command.
+
+ * Add a flag to keep reprompting for the password until authentication
+   succeeds.
+
+ * Use krb5_get_init_creds_opt_set_out_ccache to store the ticket cache
+   instead of writing the credentials ourselves, since this will store MIT
+   Kerberos configuration information in the cache.
+
+ * Support obtaining new credentials in a DIR cache or another cache type
+   that supports multiple principals without destroying the existing
+   cache.
+
+ * Add a kinstance command to run a command with a particular default
+   principal instead of the default for the cache collection (assuming
+   this is even possible).
+
+ * Determine the actual ticket lifetime from the Kerberos ticket cache and
+   use that to set the wakeup time if -K was not provided, rather than
+   always using a default of one hour.
+
+krenew:
+
+ * Add an option to send SIGHUP to the child process when krenew exits
+   because the ticket is no longer renewable.
+
+Documentation:
+
+ * Document how to start Apache with tickets and AFS tokens, either using
+   k5start in the init script or the non-PAG method we use at Stanford.
+   Probably take some information from the Stanford web page documenting
+   using tokens with servers.
+
+ * Document when various flags and features were added.
+
+Test suite:
+
+ * Test more of krenew's basic functionality, preferrably by parsing klist
+   output more thoroughly (or using a Perl module that can parse the
+   ticket cache directly) and seeing if tickets really were renewed.
+
+ * Test that -K and running a command wakes up periodically and renews
+   tickets for both krenew and k5start.
+
+ * Add tests for k5start password prompting, either from standard input or
+   from a TTY.
+
+ * Move tests/libtest.pl into rra-c-util and break it apart into
+   functionality groups.
+
+ * Refactor all test cases to reduce copy-and-paste code and use more
+   helper functions.

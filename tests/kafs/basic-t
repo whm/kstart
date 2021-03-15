@@ -1,0 +1,104 @@
+#!/bin/sh
+#
+# Test suite for the kafs library.
+#
+# The canonical version of this file is maintained in the rra-c-util package,
+# which can be found at <http://www.eyrie.org/~eagle/software/rra-c-util/>.
+#
+# Written by Russ Allbery <eagle@eyrie.org>
+# Copyright 2009
+#     The Board of Trustees of the Leland Stanford Junior University
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+. "$SOURCE/tap/libtap.sh"
+cd "$BUILD/kafs"
+
+# Check whether we already have a token.
+if tokens | grep -i 'tokens for ' >/dev/null ; then
+    tokens=true
+else
+    tokens=false
+fi
+
+# Run the helper program and save its output and error.
+./basic > basic-output 2> basic-errors
+status=$?
+
+# If it exited with status 2, AFS is apparently not running and we should skip
+# all of the tests.
+if [ "$status" -eq 2 ] ; then
+    rm -f basic-output basic-errors
+    skip_all 'AFS not available'
+fi
+plan 5
+
+# If we don't currently have a token, we can't check that it disappears after
+# k_setpag.  Otherwise, check the first tokens output and be sure that no
+# tokens are seen.
+if sed -n '/^=== tokens .setpag./,/^===/p' basic-output \
+        | grep -i 'tokens for ' > /dev/null ; then
+    ok 'k_setpag hides existing tokens' false
+else
+    if [ "$tokens" = true ] ; then
+        ok 'k_setpag hides existing tokens' true
+    else
+        skip 'no existing tokens'
+    fi
+fi
+
+# If aklog or tokens failed, we can't run the rest of the tests.
+if [ "$status" -eq 3 ] ; then
+    skip_block 3 'aklog or tokens failed'
+else
+    if sed -n '/^=== tokens .aklog./,/^===/p' basic-output \
+            | grep -i 'tokens for ' > /dev/null ; then
+        ok 'token present after aklog' true
+    else
+        ok 'token present after aklog' false
+    fi
+
+    # Check for no token after k_unlog.
+    if sed -n '/^=== tokens .unlog./,/^===/p' basic-output \
+            | grep -i 'tokens for ' > /dev/null ; then
+        ok 'token absent after unlog' false
+    else
+        ok 'token absent after unlog' true
+    fi
+
+    # Be sure that everything succeeded; otherwise print out the errors file.
+    if [ "$status" -ne 0 ] ; then
+        sed 's/^/# /' basic-errors
+    fi
+    ok 'all kafs calls succeeded' [ "$status" -eq 0 ]
+fi
+
+# Ensure that none of this affected our starting token.
+if [ "$tokens" = true ] ; then
+    if tokens | grep -i 'tokens for ' >/dev/null ; then
+        ok 'still have initial token' true
+    else
+        ok 'still have initial token' false
+    fi
+else
+    skip 'no existing tokens'
+fi
+
+# Clean up.
+rm -f basic-output basic-errors

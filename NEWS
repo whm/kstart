@@ -1,0 +1,708 @@
+                       User-Visible kstart Changes
+
+kstart 4.2 (2015-12-25)
+
+    k5start, when run with the -K option to run as a daemon, no longer
+    exits if the initial authentication fails (unless -x was given).
+    Instead, it reports the error to standard error and then continues to
+    run, attempting authentication every minute as if authentication had
+    failed after it had started.  Patch from Rasmus Borup Hansen.
+
+    For both k5start with a command or -K and no -x flag, and krenew with
+    the -i flag, repeatedly retry the initial authentication.  The first
+    retry will be immediate, and then the commands will keep trying with
+    exponential backoff to one minute intervals, and then continuously at
+    one minute intervals until the command is killed or authentication
+    succeeds.  k5start and krenew will no longer start any other command
+    until the initial authentication succeeds, fixing startup behavior
+    when running a command that must have valid Kerberos tickets
+    immediately on start.  Based on a patch by Lars Hanke.
+
+    Clean up the temporary ticket cache on k5start failure if -o, -g, or
+    -m were given.  Based on a patch by Rasmus Borup Hansen.
+
+    The -H flag to k5start or krenew may now be used in conjunction with
+    -K and controls whether the ticket is renewed when the command wakes
+    up.  Normally, the ticket will be renewed if it will expire sooner
+    than two minutes after the next time the command will wake up.  If -H
+    is specified, its value replaces the default value of two minutes.
+    Patch from Michael Lass.
+
+    Add a new -a option to both k5start and krenew that, when used with
+    -K, tells those programs to refresh tickets every time they wake up.
+    This is useful with -t to ensure that the AFS token renewal program is
+    always run, even if something else renews the ticket cache before
+    k5start or krenew wake up.  It also provides more predictable ticket
+    refresh behavior.  This probably should have been the default with -K
+    from the beginning, but the default wasn't changed to keep backward
+    compatibility.  Consider always using -a with -K.  Based on a patch by
+    Andrew Deason.
+
+    Fix k5start and krenew to not incorrectly reject the -b flag in
+    conjunction with -K or a command.  Patch from Lars Hanke.
+
+    Update to rra-c-util 5.9:
+
+    * Add missing va_end to xasprintf implementation.
+    * Improve portability to Kerberos included in Solaris 10.
+    * Use appropriate warning flags with Clang (currently not warning clean).
+    * Use Lancaster Consensus environment variables to control tests.
+    * Use calloc or reallocarray for protection against integer overflows.
+    * Suppress warnings from Kerberos headers in non-system paths.
+    * Assume calloc initializes pointers to NULL.
+    * Assume free(NULL) is properly ignored.
+    * Improve error handling in xasprintf and xvasprintf.
+    * Check the return status of snprintf and vsnprintf properly.
+    * Preserve errno if snprintf fails in vasprintf replacement.
+    * Fix probing for Heimdal's libroken to work with older versions.
+    * Improve POD tests.
+    * Fix kafs compilation failure on Solaris 11 or later.
+    * Drop concat from the util library in favor of asprintf.
+    * Fail on any error in [bx]asprintf and [bx]vasprintf.
+    * Pass --deps to krb5-config in the non-reduced-dependencies case.
+    * Silence __attribute__ warnings on more compilers.
+
+    Update to C TAP Harness 3.4:
+
+    * Fix segfault in runtests with an empty test list.
+    * Display verbose test results with -v or C_TAP_VERBOSE.
+    * Support comments and blank lines in test lists.
+    * Check for integer overflow on memory allocations.
+    * Reopen standard input to /dev/null when running a test list.
+    * Don't leak extraneous file descriptors to tests.
+    * Suppress lazy plans and test summaries if the test failed with bail.
+    * runtests now treats the command line as a list of tests by default.
+    * The full test executable path can now be passed to runtests -o.
+    * Improved harness output for tests with lazy plans.
+    * Improved harness output to a terminal for some abort cases.
+    * Flush harness output after each test even when not on a terminal.
+    * Only use feature-test macros when requested or built with gcc -ansi.
+    * Drop is_double from the C TAP library to avoid requiring -lm.
+    * Avoid using local in the shell libtap.sh library.
+    * Silence __attribute__ warnings on more compilers.
+    * runtests now frees all allocated resources on exit.
+
+kstart 4.1 (2012-01-07)
+
+    Fix a regression introduced in kstart 4.0 that caused k5start -H and
+    krenew -H to fail and attempt reauthentication with non-renewable
+    tickets even if the lifetime was long enough.  Thanks to pod for the
+    report.
+
+    Fix a regression introduced in kstart 4.0 where k5start -H would be
+    happy with an unexpired ticket for a different principal than the
+    desired client principal.
+
+    When k5start or krenew are running as a daemon and obtaining new
+    tickets fails, both now shorten the wake-up interval to one minute and
+    keep trying at that interval until the error resolves itself, and then
+    go back to the normal wakeup interval.
+
+    Add a new -s option to krenew that, if given, tells krenew to send
+    SIGHUP to the command it's running when it exits because it can't
+    renew the ticket.  This is useful when continuing to run the command
+    without a valid ticket would be pointless.
+
+    After a SIGHUP or SIGTERM when not running a command, k5start and
+    krenew now clean up their PID files, if any, before exiting.
+
+kstart 4.0 (2011-12-29)
+
+    Remove k4start from the distribution.  I no longer have a Kerberos v4
+    environment with which to test and therefore no way to refactor and
+    restructure the code for other changes to the package.  Users who
+    still need k4start should use an older version of the package.
+
+    Ticket caches passed to k5start or krenew with the -k option are now
+    used as-is without prepending "FILE:".  This allows both programs to
+    be used with non-file caches (unles the -o, -g, or -m options were
+    given to k5start, of course).  However, users who were relying on
+    k5start or krenew prepending "FILE:" may now need to add this
+    explicitly to the -k argument if they want the ticket cache to be set
+    in the environment with that prefix.
+
+    Always canonicalize the ticket cache name in k5start before
+    propagating KRB5CCNAME to child processes.  This combined with the
+    previous change allows -k to specify a ticket cache name that changes
+    once the cache is created, such as when creating new PIPE caches.
+
+    krenew now defaults to staying running if renewing credentials fails.
+    The new -x option restores the previous behavior of exiting on any
+    error.  It will still exit by default (unless -i is used) if the
+    renewable lifetime has expired or if the ticket cache has been
+    removed.
+
+    k5start no longer exits on failure to obtain credentials when running
+    as a daemon.  The new -x option restores the previous behavior of
+    exiting on any error.  It does still exit if the first attempt to
+    obtain credentials during startup (before backgrounding) fails, to
+    make it easier to diagnose configuration errors.
+
+    k5start, when run with the -o, -g, or -m options to change ticket
+    cache ownership or permissions, now writes a temporary ticket cache in
+    the same directory, sets its ownership and permissions, and then
+    replaces the existing cache with an atomic rename.  It also sets
+    permissions properly if it has to reauthenticate after backgrounding
+    itself.  This closes two windows where the cache may not be accessible
+    to the program using it if k5start were in the middle of refreshing
+    it.  Thanks to Harry Coin for the report.
+
+    k5start and krenew now propagate SIGINT (Ctrl-C) to the child process
+    when running a command rather than exiting immediately.
+
+    Set signal handlers with sigaction instead of signal, which may fix
+    problems propagating multiple signals to child processes in k5start
+    and krenew.
+
+    Diagnose the nonsensical combination of -U and -u or -i options in
+    k5start and report an error rather than ignoring -u and appending the
+    instance from -i onto the principal obtained via -U.  Also diagnose
+    the non-sensical combination of -H and a command to run in both
+    k5start and krenew; just omit the -H flag for this case.
+
+    Update the included kafs library to the version from rra-c-util 4.0,
+    adding support for Mac OS X and Solaris 11.
+
+    Change references to Kerberos v5 to just Kerberos in the
+    documentation.  Kerberos v5 has been the default version of Kerberos
+    for over ten years now.
+
+    Update to rra-c-util 4.0:
+
+    * Build on systems where krb5/krb5.h exists but krb5.h does not.
+    * Build with OpenBSD Heimdal where there is no separate roken library.
+    * Kerberos probes no longer assume transitive library dependencies.
+    * Fix removal of /usr/include from Kerberos CPPFLAGS.
+    * Add notices to all files copied from rra-c-util.
+    * Fix replacement of krb5_free_error_message.
+    * Support older Heimdal with no-context krb5_get_init_creds_opt_free.
+    * Improve probe for krb5_kt_free_entry.
+    * Fix use of long long, where available, in replacement mkstemp.
+    * Include strings.h where present for more POSIX string functions.
+    * Use typedef for a missing sig_atomic_t.
+    * Avoid passing a NULL context to krb5_get_error_message.
+    * Fix integer data types in the messages utility library.
+    * Use configure-detected aklog path in the test suite.
+    * Add replacement for a missing strndup (such as on Mac OS X).
+    * Add tests for messages-krb5 utility functions.
+    * Update compiler warning flags for make warnings to gcc 4.6.1.
+
+    Update to C TAP Harness 1.9:
+
+    * Add a usage message and -h option to runtests.
+    * Honor -s and SOURCE in runtests even if BUILD is not set.
+    * Improve test summary at the end of a C test case.
+    * Flush stderr before printing TAP output.
+    * Improve portability of output functions in the shell libtap.sh.
+    * Add notices to all files copied from C TAP Harness.
+
+kstart 3.16 (2010-01-19)
+
+    Add the -L option to k5start and krenew, saying to log messages to
+    syslog as well as standard output or standard error.
+
+    Correctly set the ticket cache path in k5start when the -k option was
+    not given, fixing a NULL pointer dereference when the -o, -g, or -m
+    options were given without -k.  Thanks, Garrett Wollman.
+
+    Allow the argument to -k to start with FILE: and strip off that prefix
+    to form the ticket cache name.  -k still forces its argument to be a
+    file-based cache, however; FILE: is the only cache type designator
+    supported.  Use the KRB5CCNAME environment variable for other ticket
+    cache types.
+
+    k5start and krenew now say, in -h output, if they will attempt to
+    create a new AFS PAG for commands run in combination with -t (enabled
+    by --enable-setpag), allowing one to determine whether that support
+    was compiled in.
+
+    Include the proper header for signal handling functions, fixing a
+    build problem on Solaris 9.  Thanks, Tim Bishop.
+
+    Avoid Heimdal functions marked as deprecated.  Also fix the test suite
+    to pass with Heimdal user space.
+
+    Update to rra-c-util 2.2:
+
+    * Add GCC function attributes alloc_size, malloc, and nonnull.
+    * Use AC_TYPE_LONG_LONG_INT instead of AC_CHECK_TYPES([long long]).
+
+kstart 3.15 (2009-08-15)
+
+    k5start and krenew now catch SIGALRM and immediately refresh the
+    ticket cache upon receiving it, even if the ticket isn't expired.
+
+    Add the -i option to krenew, which says to keep running even if there
+    is an error renewing the ticket cache.  This is useful if the ticket
+    cache renewed by krenew may expire and then later be renewed (such as
+    with a manual kinit) and krenew is expected to wake up again and
+    process the new ticket cache.
+
+    Re-run aklog even if the ticket is still valid when -H is used in
+    combination with -t.  We don't check whether the token is valid, so
+    it's safer to always re-run aklog.  We may be setting a token in a new
+    PAG using an existing ticket cache.
+
+    Fail with an error rather than a segfault if MIT Kerberos is unable to
+    determine a default local realm for an unqualified principal.  Based
+    on a patch from Jason Funk.
+
+    Add example krenew-agent script, which runs krenew for a given ticket
+    cache if it isn't already running.  Contributed by Tim Skirvin.
+
+    Correctly declare message_fatal_cleanup extern, fixing compilation
+    problems on some platforms (particularly Mac OS X).
+
+    Document that the -b flag to all programs also changes directories to
+    / and any paths should therefore be absolute.
+
+    Add support for the old Heimdal krb5_get_error_string interface.
+    Thanks, Chaskiel Grundman.
+
+    Fix some timing issues with the test suite that caused spurious
+    failures on fast systems and try to make it more robust in the face of
+    different process scheduling.  This probably still isn't perfect.
+
+    k4start is now built optionally based on whether Kerberos v4 libraries
+    are available, removing the need for --disable-k4start if no Kerberos
+    v4 libraries are present.  The option is still supported to explicitly
+    disable building k4start even if Kerberos v4 libraries are found.
+
+    Enable Automake silent rules.  For a quieter build, pass the
+    --enable-silent-rules option to configure or build with make V=0.
+
+    Update to rra-c-util 2.0:
+
+    * Redo build system for kafs replacement library and add tests.
+    * Add --with-libkafs-include and --with-libkafs-lib configure options.
+    * Add --with-afs-include and --with-afs-lib configure options.
+    * Sanity-check the results of krb5-config before proceeding.
+    * Fall back on manual probing if krb5-config results don't work.
+    * Add --with-krb5-include and --with-krb5-lib configure options.
+    * Add --with-krb4-include and --with-krb4-lib configure options.
+    * Don't break if the user clobbers CPPFLAGS at build time.
+    * Provide a proper bool type with Sun Studio 12 on Solaris 10.
+    * Change AC_TRY_* to AC_*_IFELSE as recommended by Autoconf.
+    * Add strlcpy, strlcat, and setenv replacements.
+    * Fix open call parameters in daemon portability test.
+    * Update portable and util test suite for C TAP Harness 1.1.
+
+    Update to C TAP Harness 1.1:
+
+    * Rewrite of all test cases to use the new TAP library support.
+    * Much improved and simplified builddir != srcdir test suite support.
+    * Support running a single test with tests/runtests -o.
+    * Summarize results at the end of test executions.
+    * Correctly handle completely skipped tests, like docs/pod.
+    * Better reporting of fatal errors in the test suite.
+    * Consume all output from a test case before closing its descriptor.
+    * Support aspell for spelling tests and skip them by default.
+
+kstart 3.14 (2008-07-22)
+
+    Add -F and -P options to k5start to force the tickets to not be
+    forwardable or proxiable, regardless of library defaults.  This can be
+    necessary if one's krb5.conf defaults to forwardable or proxiable
+    tickets but service principals aren't allowed to get such tickets.
+
+kstart 3.13 (2008-05-28)
+
+    As of this release, k4start should be considered frozen.  I will still
+    fix bugs where possible, but it is no longer tested before releases
+    and new features added to k5start and krenew will not be added to
+    k4start.
+
+    If the environment variable AKLOG is set, use its value as the path to
+    the aklog program to run when -t is given to k5start or krenew.  If
+    AKLOG is set, always run that program unless -n was given in k4start.
+    This environment variable replaces the badly-named KINIT_PROG,
+    although KINIT_PROG is still supported for backward compatibility.
+
+    Remove the restriction that -o, -g, and -m may not be used with -K or
+    a command.  The MIT Kerberos libraries have removed the restriction
+    about ticket cache ownership and this now works properly.  However,
+    each authentication changes the permissions, so reset the ownership
+    and permissions whenever we renew the cache.  Thanks, Howard
+    Wilkinson.
+
+    Strip a leading FILE: or WRFILE: prefix from the ticket cache name
+    when changing the ownership or permissions.  Based on a patch from
+    Howard Wilkinson.
+
+    Fix a portability problem with Heimdal introduced in the previous
+    release (Heimdal wants krb5_cc_copy_cache, not krb5_cc_copy_creds).
+    Thanks, Jason White.
+
+    Include a dummy object in libportable to avoid build failures on
+    systems that don't need any portability functions (such as Mac OS X).
+
+kstart 3.12 (2008-04-23)
+
+    krenew, when running a command, first copies the current ticket cache
+    to a private cache for that command so that it will be unaffected by
+    later destruction of the cache (such as by user logout).  The private
+    cache is deleted when the command exits.
+
+    Fix problems with command-line parsing in k4start and k5start that
+    led to treating a provided command as a principal in some situations.
+    Allow for getopt() implementations that don't strip the -- argument
+    if it occurs after the first non-option (such as on at least older
+    Solaris).
+
+    k5start now uses krb5_cc_destroy() rather than unlink to clean up the
+    ticket cache when necessary.
+
+    Fix multiple problems with the libkafs and AFS system call checks
+    on platforms other than Linux that caused the libraries to leak into
+    the global LIBS and include checks done without the AFS include
+    paths.
+
+    Fix the ordering of LDFLAGS to avoid accidentally linking with the
+    AFS com_err library and ensure the AFS syscall layer is built with
+    the right CPPFLAGS.
+
+    If KRB5_CONFIG was explicitly set in the environment, don't use a
+    different krb5-config based on --with-krb4 or --with-krb5.  If
+    krb5-config isn't executable, don't use it.  This allows one to
+    force library probing by setting KRB5_CONFIG to point to a
+    nonexistent file.
+
+    Sanity-check the results of krb5-config before proceeding and error
+    out in configure if they don't work.
+
+    Fix Autoconf syntax error when probing for libkrb5support.  Thanks,
+    Mike Garrison.
+
+kstart 3.11 (2008-04-10)
+
+    Add a -c option to k4start, k5start, and krenew, which writes out the
+    PID of the child process when running a command.  This is similar to
+    -p, but writes out the command PID rather than the PID of k4start,
+    k5start, or krenew.  Based on a patch by Sascha Tandel.
+
+    Add a -H option to krenew that works similarly to the -H option for
+    k5start: checking whether the remaining lifetime of the ticket is
+    already long enough, only renewing if it isn't, and exiting with a
+    status indicating whether the resulting ticket had a sufficiently long
+    lifetime.  Based on a patch by Gautam Iyer.
+
+    Add -o, -g, and -m options to k4start and k5start to set the owner,
+    group, and mode of the ticket cache after creation.  These options
+    cannot be used with a specified command or with -K since, after making
+    those changes, the Kerberos library won't permit reading or writing to
+    the ticket cache.  Based on a patch by Howard Wilkinson.
+
+    Significantly update the AFS setpag support.  The option to build with
+    AFS setpag support is now --enable-setpag.  On most platforms, if
+    libkafs is not found, kstart uses an internal AFS system call
+    implementation that doesn't require linking with the AFS libraries.
+    The AFS libraries are used only on AIX and IRIX.  On platforms other
+    than Linux, pass --with-afs to configure to specify the location of
+    the AFS include files and libraries.
+
+    Redo the build machinery for Kerberos v4 and Kerberos v5 libraries to
+    take advantage of portability improvements from other projects.
+    kstart will now hopefully build with AIX's Kerberos libraries and get
+    more of the edge cases right.  Instead of --with-kerberos, use
+    --with-krb5 to specify the path to the Kerberos v5 libraries and
+    --with-krb4 to specify the path to the Kerberos v4 libraries.
+
+    After backgrounding, reauthenticate if necessary before writing out
+    the PID file in case we need tickets or tokens to write the file.
+
+    Close the keytab after determining the principal with k5start -U.
+
+    --enable-static is no longer supported.  This is generally unnecessary
+    and complex to support in combination with other options.
+
+    kstart now has a basic test suite, although not all functionality is
+    tested yet.  See README and tests/data/README for information on how
+    to enable the tests that are there.
+
+kstart 3.10 (2007-04-10)
+
+    Fix compilation error with a new enough MIT Kerberos to support
+    krb5_get_error_message and with et/com_err.h instead of com_err.h
+    (such as Fedora Core 6).  Thanks, Stefan Foerster.
+
+    Rework the configure script to use AS_IF instead of explicit if
+    statements, which allows Autoconf to do better dependency analysis.
+
+kstart 3.9 (2007-03-02)
+
+    Separate authenticating from running aklog in k4start, k5start, and
+    krenew.  Just because we have a valid ticket cache doesn't mean that
+    we already have a token since we just created a new PAG.  If running
+    aklog was requested, always do so even if we didn't get new tickets.
+
+kstart 3.8 (2007-03-02)
+
+    Allow -H to be used with a command in k4start and k5start.  In this
+    case, check the existing ticket cache and authenticate if it's stale,
+    then run the command in either case.  This is useful when running
+    several commands with the same credentials at near the same time.  It
+    reduces Kerberos traffic and avoids service ticket requests being
+    rejected as possible relay attacks.
+
+    Support the new MIT Kerberos error message functions.
+
+    Overhaul the build system.  Use Automake, use a better strategy for
+    dealing with portability issues, and factor duplicate code out into
+    shared files.
+
+kstart 3.7 (2007-01-28)
+
+    Correctly honor the argument to -H for k4start and k5start.  This was
+    lost during an earlier code restructuring.  Thanks to Thomas Weiss for
+    the bug report.
+
+    Document that -K will renew a ticket if it will expire within two
+    minutes of the next wakeup, not just if it will expire before the next
+    wakeup.
+
+kstart 3.6 (2006-10-04)
+
+    Call k_hasafs before k_setpag in builds with the kafs functions.
+    Without calling k_hasafs first, k_setpag may fail or die with a
+    signal.  Thanks to Thomas Kula for the bug report.
+
+    Document in the man pages when a new PAG is created.
+
+    Avoid $< in non-pattern rules.  This doesn't work with some non-GNU
+    makes.
+
+kstart 3.5 (2006-06-13)
+
+    When invoked to run a command, k4start, k5start, and krenew now
+    propagate HUP, TERM, and QUIT signals to the child process rather than
+    just exiting.  These signals do not terminate k4start, k5start, or
+    krenew any longer, but of course they will exit if the signal causes
+    the child process to exit.  Patch from Adam Megacz.
+
+    Minor Makefile updates to support Autoconf 2.60.
+
+kstart 3.4 (2006-05-05)
+
+    k5start now rechecks the ticket cache and possibly reauthenticates
+    after backgrounding itself when running as a daemon.  This works
+    around the loss of the ticket cache after backgrounding on Mac OS X
+    with the default ticket cache type.
+
+    Force the use of a file ticket cache in k5start and krenew if the -k
+    option is given.  The code was assuming that a file ticket cache was
+    the default, which may not always be the case.
+
+    Document in the krenew man page that the -b option may not do what one
+    desires on Mac OS X and suggest an alternative that doesn't detach
+    from the current session.
+
+    krenew no longer runs aklog unless the -t flag was given.  Previously,
+    due to a bug, it would skip running aklog the first time unless -t was
+    given but would then always run aklog if either a compiled-in default
+    or a default from the environment were available.
+
+kstart 3.3 (2006-04-10)
+
+    Add a missing <stdarg.h> include that caused compilation failures on
+    OS X in krenew and could have led to latent problems on other
+    platforms.
+
+    Clarify that the DIR argument to --with-afs-setpag is optional in
+    configure --help output.
+
+kstart 3.2 (2006-03-05)
+
+    Revert the -g feature.  MIT Kerberos refuses to use ticket caches not
+    owned by the running process, removing the usefulness of the feature,
+    and a bug in its implementation was causing k5start and krenew to not
+    run aklog when they should.
+
+kstart 3.1 (2006-02-23)
+
+    Add the -g flag to k5start and krenew to make the ticket cache
+    group-readable.  This is useful for maintaining a ticket cache shared
+    by multiple automated processes on the same host running as different
+    users (such as Mailman).
+
+kstart 3.0 (2006-01-22)
+
+    Add a krenew command that acts like k5start except that it uses an
+    existing ticket cache and just renews it.
+
+    Don't check the executability of the aklog program before running it,
+    as this prevents people from configuring aklog programs that include
+    flags.
+
+    Add a -h flag to all programs to display the usage message and exit.
+
+    Report the compiled aklog path in usage output.
+
+kstart 2.9 (2006-01-01)
+
+    Improved error handling when using Heimdal and clearer formatting with
+    any Kerberos implementation.  Use krb5_err and krb5_warn functions
+    always and provide replacements when using MIT Kerberos.
+
+    Significantly improved Kerberos library probes.  Use krb5-config where
+    available to get Kerberos libraries and compiler flags unless
+    --enable-reduced-depends or --enable-static are used, and support MIT
+    Kerberos 1.4 with --enable-static.
+
+    Add the --enable-reduced-depends configure option to try to minimize
+    the shared library dependencies of the resulting binaries on platforms
+    with proper shared library dependencies.  This is of interest
+    primarily to people building packages for distributions.
+
+    AFS setpag support no longer requires linking with pthreads and also
+    supports the Heimdal or KTH libkafs library as a source of setpag.
+
+    Ported to systems that require sys/time.h be included instead of
+    time.h (Tru64 4.0 in particular).
+
+    Attempt better portability to KTH Kerberos installs that build their
+    own DES library rather than using OpenSSL.
+
+    Included a spec file for RPM builds, contributed by Buck Huppmann.
+
+kstart 2.8 (2005-08-09)
+
+    Added the -b option to both k4start and k5start to background after
+    the initial authentication.  Added the -p option to both k4start and
+    k5start to save the PID of the process in a file.  Both were based on
+    code by Navid Golpayegani.
+
+    -p is no longer accepted as a synonym for -s (this synonym was never
+    documented).
+
+kstart 2.7 (2005-06-04)
+
+    Fixed a bug in k5start introduced in 2.4 that broke -H handling and
+    getting a specific service ticket, and which caused k5start to make an
+    additional bogus request for the wrong service on each authentication.
+
+kstart 2.6 (2005-06-03)
+
+    Finished the port to Heimdal.  k5start error reporting should now work
+    correctly, as should handling of krb5.conf defaults.
+
+    Added the -U flag to k5start, telling it to figure out the client
+    principal by looking in the provided keytab rather than expecting it
+    on the command line, making it easier to write scripts that use the
+    system keytab.
+
+    Added the --disable-k4start flag to configure to make it easier to
+    build only k5start (particularly useful if one only has Heimdal and
+    not KTH Kerberos).
+
+kstart 2.5 (2005-05-01)
+
+    Unless -k is given, k4start and k5start both now create a temporary
+    ticket cache file with mkstemp and delete it on exit when running a
+    command, to not interfere with other ticket caches owned by the same
+    user.
+
+    k5start now correctly sets KRB5CCNAME when running aklog or a
+    command.
+
+    Ported to Heimdal and KTH Kerberos, somewhat.  Error handling in
+    k5start still won't produce good error messages because the
+    differences between MIT and Heimdal are more profound than I can
+    easily adjust for.
+
+    Documentation improvements, particularly in the area of specifying
+    commands to run.
+
+kstart 2.4 (2005-04-25)
+
+    Renamed kstart to k4start to avoid a conflict with a KDE program.
+    This is more symmetric with k5start anyway.
+
+    Added support to both k4start and k5start for running a program after
+    obtaining Kerberos credentials and optionally AFS tokens.  This mode
+    is like the -K mode, except that k4start or k5start will exit when the
+    program it ran exits.  Added preliminary support for creating a PAG
+    for the command to run in.
+
+    Minor cleanups and bug fixes to both programs.  Exit earlier if unable
+    to determine the principal, add newlines to the end of some verbose
+    trace messages, and fix error reporting after Ctrl-C in k4start.
+
+    Internal code refactoring, reorganization, and cleanup.
+
+kstart 2.3 (2005-02-22)
+
+    Fixed make install with a separate build directory.  The Makefile must
+    look for the man pages in the source directory.
+
+    Don't include Debian packaging rules in the standard distribution (per
+    recommended best practices for maintaining Debian packages with rules
+    in the upstream CVS).
+
+kstart 2.2 (2004-07-29)
+
+    Removed the various Stanford-specific banners that these programs
+    inherited from our local kinit.  In normal use of kstart or k5start,
+    there's no need to check for whether the session is encrypted (and the
+    relevant environment variables are normally not set anyway).
+    Similarly, since there's only one kstart and k5start, there isn't the
+    need to distinguish from another by printing out a Stanford banner.
+
+    Added Debian package build rules.
+
+    Significantly improved the man pages.
+
+    Substantial code cleanup of both kstart and k5start.  Both now follow
+    my current C coding standards, include far less portability cruft, and
+    include far fewer unnecessary headers.
+
+kstart 2.1 (2002-12-29)
+
+    No code changes.  Added a README file with installation instructions
+    and a license.
+
+kstart 2.0 (2002-12-29)
+
+    First release that includes k5start, an equivalent version of kstart
+    for Kerberos v5.
+
+kstart 1.19 (2001-06-14)
+
+    Added a fudge factor to make sure the ticket is refreshed before it
+    expires.  The same factor also applies to -H, so -H will detect
+    tickets that are about to expire.
+
+kstart 1.17 (2001-01-16)
+
+    Fixed a bug in obtaining a ticket from a srvtab.
+
+kstart 1.16 (2000-10-17)
+
+    Added the -H option to check whether a ticket has expired, and fix
+    bugs in the detection of expired tickets.
+
+kstart 1.13 (2000-04-19)
+
+    Diagnose errors when running aklog.  Better portability and use of
+    Autoconf.
+
+kstart 1.10 (1999-09-01)
+
+    Set KRBTKFILE when -k is used so that aklog can find the ticket.
+
+kstart 1.8 (1997-10-17)
+
+    Add support for long-term ticket maintenance as a daemon, the -K and
+    -k options.
+
+kstart 1.7 (1997-07-23)
+
+    Change default location of aklog and documentation fixes.
+
+kstart 1.5 (1996-04-10)
+
+    Portability to Solaris.  Change the usage message to indicate that
+    lifetime is in minutes, not seconds.
+
+kstart 1.3 (1995-06-05)
+
+    Add a password prompt for the -s option and remove implied -q.
