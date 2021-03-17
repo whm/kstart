@@ -1,0 +1,115 @@
+Index: kstart/framework.c
+===================================================================
+--- kstart.orig/framework.c	2021-03-15 00:56:51.567730558 +0000
++++ kstart/framework.c	2021-03-17 07:13:12.427775255 +0000
+@@ -309,13 +309,15 @@
+      */
+     if (config->command != NULL && config->do_aklog) {
+         if (k_hasafs()) {
+-            if (k_setpag() < 0) {
+-                syswarn("unable to create PAG");
++            if (!has_kAFS()) {
++                if (k_setpag() < 0) {
++                    syswarn("unable to create PAG");
++                    exit_cleanup(ctx, config, 1);
++                }
++            } else {
++                warn("cannot create PAG: AFS support is not available");
+                 exit_cleanup(ctx, config, 1);
+             }
+-        } else {
+-            warn("cannot create PAG: AFS support is not available");
+-            exit_cleanup(ctx, config, 1);
+         }
+     }
+ 
+Index: kstart/kafs/kafs.c
+===================================================================
+--- kstart.orig/kafs/kafs.c	2021-03-15 00:56:51.571730689 +0000
++++ kstart/kafs/kafs.c	2021-03-17 07:20:49.338660633 +0000
+@@ -129,6 +129,22 @@
+ 
+ 
+ /*
++ * Check to see whether kAFS is available.
++ */
++int
++has_kAFS(void)
++{
++    struct stat status;
++    int code, have_kAFS = 0;
++
++    code = stat("/proc/fs/afs", &status);
++    if (code == 0)
++       have_kAFS = 1;
++    return haveKAFS;
++}
++
++
++/*
+  * Probe to see if AFS is available and we can make system calls successfully.
+  * This just attempts the set token system call with an empty token structure,
+  * which will be a no-op in the kernel.
+@@ -180,16 +196,26 @@
+ 
+ 
+ /*
+- * The unlog system call.  This destroys any tokens in the current PAG.
++ * The unlog system call.  This destroys any tokens by calling the
++ * external progam unlog.
+  */
+ int
+ k_unlog(void)
+ {
+-    struct ViceIoctl iob;
++    const char *unlog = NULL;
++    pid_t child = 0;
++    int status = 0;
++
++    akunlog = getenv("AKUNLOG");
++    if (akunlog == NULL) {
++        akunlog = "/usr/bin/unlog";
++    }
++
++    child = command_start(akunlog);
++    if (child < 0) {
++        syswarn("unable to run command %s", unlog);
++    }
++    command_finish(child, status);
+ 
+-    iob.in = NULL;
+-    iob.in_size = 0;
+-    iob.out = NULL;
+-    iob.out_size = 0;
+-    return k_pioctl(NULL, _IOW('V', 9, struct ViceIoctl), &iob, 0);
++    return 0;
+ }
+Index: kstart/portable/k_haspag.c
+===================================================================
+--- kstart.orig/portable/k_haspag.c	2021-03-15 00:56:51.579730951 +0000
++++ kstart/portable/k_haspag.c	2021-03-17 07:20:50.930712509 +0000
+@@ -44,6 +44,15 @@
+     gid_t *groups;
+     uint32_t pag, g0, g1, hi, lo;
+ 
++    /*
++     * Just return if AFS is not available.  The assumption is that
++     * aklog-kafs was used to acquire tokens and a PAG was not
++     * created.
++     */
++    if (!k_hasafs()) {
++        return 0;
++    }
++
+     /* First, try the system call if k_pioctl is available. */
+ #ifdef HAVE_K_PIOCTL
+     int result;
+@@ -63,6 +72,8 @@
+      * system call.  Fall back on analyzing the groups.
+      */
+     ngroups = getgroups(0, NULL);
++    if (ngroups < 0) {
++        return 0;
+     groups = calloc(ngroups, sizeof(*groups));
+     if (groups == NULL)
+         return 0;

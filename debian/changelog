@@ -1,3 +1,12 @@
+kstart (4.2-3) unstable; urgency=medium
+
+  * Add support for aklog-kafs.
+    - On systems without AFS installed don't attempt to create a PAG.
+    - Call an external program to "unlog".  This avoides attempting
+      to use pioctls.
+
+ -- Bill MacAllister <bill@ca-zephyr.org>  Wed, 17 Mar 2021 07:26:28 +0000
+
 kstart (4.2-2) unstable; urgency=medium
 
   * Update to debhelper compatibility level V11.
