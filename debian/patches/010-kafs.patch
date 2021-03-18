@@ -1,7 +1,7 @@
 Index: kstart/framework.c
 ===================================================================
---- kstart.orig/framework.c	2021-03-15 00:56:51.567730558 +0000
-+++ kstart/framework.c	2021-03-17 07:13:12.427775255 +0000
+--- kstart.orig/framework.c	2021-03-18 06:33:10.444450424 +0000
++++ kstart/framework.c	2021-03-18 06:33:10.416449496 +0000
 @@ -309,13 +309,15 @@
       */
      if (config->command != NULL && config->do_aklog) {
@@ -25,8 +25,8 @@ Index: kstart/framework.c
  
 Index: kstart/kafs/kafs.c
 ===================================================================
---- kstart.orig/kafs/kafs.c	2021-03-15 00:56:51.571730689 +0000
-+++ kstart/kafs/kafs.c	2021-03-17 07:20:49.338660633 +0000
+--- kstart.orig/kafs/kafs.c	2021-03-18 06:33:10.444450424 +0000
++++ kstart/kafs/kafs.c	2021-03-18 06:33:10.416449496 +0000
 @@ -129,6 +129,22 @@
  
  
@@ -86,8 +86,8 @@ Index: kstart/kafs/kafs.c
  }
 Index: kstart/portable/k_haspag.c
 ===================================================================
---- kstart.orig/portable/k_haspag.c	2021-03-15 00:56:51.579730951 +0000
-+++ kstart/portable/k_haspag.c	2021-03-17 07:20:50.930712509 +0000
+--- kstart.orig/portable/k_haspag.c	2021-03-18 06:33:10.444450424 +0000
++++ kstart/portable/k_haspag.c	2021-03-18 06:35:39.849395583 +0000
 @@ -44,6 +44,15 @@
      gid_t *groups;
      uint32_t pag, g0, g1, hi, lo;
@@ -97,7 +97,7 @@ Index: kstart/portable/k_haspag.c
 +     * aklog-kafs was used to acquire tokens and a PAG was not
 +     * created.
 +     */
-+    if (!k_hasafs()) {
++    if (!k_hasafs() || has_kAFS()) {
 +        return 0;
 +    }
 +
@@ -113,3 +113,39 @@ Index: kstart/portable/k_haspag.c
      groups = calloc(ngroups, sizeof(*groups));
      if (groups == NULL)
          return 0;
+Index: kstart/portable/kafs.h
+===================================================================
+--- kstart.orig/portable/kafs.h	2021-03-18 06:33:10.444450424 +0000
++++ kstart/portable/kafs.h	2021-03-18 06:39:32.237083146 +0000
+@@ -70,6 +70,7 @@
+     short in_size;
+     short out_size;
+ };
++int has_kAFS(void);
+ int k_hasafs(void);
+ int k_pioctl(char *, struct ViceIoctl *, void *, int);
+ int k_setpag(void);
+@@ -91,6 +92,7 @@
+ int lsetpag(void);
+ int lpioctl(char *, int, void *, int);
+ # endif
++# define has_kAFS()
+ # define k_hasafs()           (1)
+ # define k_pioctl(p, c, a, f) lpioctl((p), (c), (a), (f))
+ # define k_setpag()           lsetpag()
+@@ -111,6 +113,7 @@
+ /* Default to a hidden visibility for all portability functions. */
+ #pragma GCC visibility push(hidden)
+ 
++int has_kAFS(void);
+ int k_hasafs(void);
+ int k_haspag(void);
+ int k_pioctl(char *, int, struct ViceIoctl *, int);
+@@ -123,6 +126,7 @@
+ /* We have no kafs implementation available. */
+ #else
+ # undef HAVE_KAFS
++# define has_kAFS()           (0)
+ # define k_hasafs()           (0)
+ # define k_haspag()           (0)
+ # define k_pioctl(p, c, a, f) (errno = ENOSYS, -1)
