@@ -1,7 +1,7 @@
 Index: kstart/framework.c
 ===================================================================
---- kstart.orig/framework.c	2021-03-19 06:11:40.717783492 +0000
-+++ kstart/framework.c	2021-03-19 06:11:40.689782576 +0000
+--- kstart.orig/framework.c	2021-03-19 06:52:16.257520330 +0000
++++ kstart/framework.c	2021-03-19 06:52:16.229519413 +0000
 @@ -309,13 +309,15 @@
       */
      if (config->command != NULL && config->do_aklog) {
@@ -25,8 +25,8 @@ Index: kstart/framework.c
  
 Index: kstart/kafs/kafs.c
 ===================================================================
---- kstart.orig/kafs/kafs.c	2021-03-19 06:11:40.717783492 +0000
-+++ kstart/kafs/kafs.c	2021-03-19 06:35:47.889151831 +0000
+--- kstart.orig/kafs/kafs.c	2021-03-19 06:52:16.257520330 +0000
++++ kstart/kafs/kafs.c	2021-03-19 06:52:16.229519413 +0000
 @@ -52,6 +52,9 @@
  #include <sys/ioctl.h>
  #include <sys/stat.h>
@@ -97,8 +97,8 @@ Index: kstart/kafs/kafs.c
  }
 Index: kstart/portable/k_haspag.c
 ===================================================================
---- kstart.orig/portable/k_haspag.c	2021-03-19 06:11:40.717783492 +0000
-+++ kstart/portable/k_haspag.c	2021-03-19 06:11:40.689782576 +0000
+--- kstart.orig/portable/k_haspag.c	2021-03-19 06:52:16.257520330 +0000
++++ kstart/portable/k_haspag.c	2021-03-19 06:52:16.229519413 +0000
 @@ -44,6 +44,15 @@
      gid_t *groups;
      uint32_t pag, g0, g1, hi, lo;
@@ -127,8 +127,8 @@ Index: kstart/portable/k_haspag.c
          return 0;
 Index: kstart/portable/kafs.h
 ===================================================================
---- kstart.orig/portable/kafs.h	2021-03-19 06:11:40.717783492 +0000
-+++ kstart/portable/kafs.h	2021-03-19 06:11:40.693782707 +0000
+--- kstart.orig/portable/kafs.h	2021-03-19 06:52:16.257520330 +0000
++++ kstart/portable/kafs.h	2021-03-19 06:52:16.229519413 +0000
 @@ -70,6 +70,7 @@
      short in_size;
      short out_size;
@@ -161,3 +161,19 @@ Index: kstart/portable/kafs.h
  # define k_hasafs()           (0)
  # define k_haspag()           (0)
  # define k_pioctl(p, c, a, f) (errno = ENOSYS, -1)
+Index: kstart/Makefile.am
+===================================================================
+--- kstart.orig/Makefile.am	2021-03-15 00:56:51.543729773 +0000
++++ kstart/Makefile.am	2021-03-19 07:04:15.301077640 +0000
+@@ -136,9 +136,9 @@
+ tests_kafs_haspag_t_LDFLAGS = $(KAFS_LDFLAGS)
+ if NEED_KAFS
+     tests_kafs_basic_LDADD = kafs/libkafs.a portable/libportable.a \
+-	$(KAFS_LIBS)
++	util/libutil.a $(KAFS_LIBS)
+     tests_kafs_haspag_t_LDADD = kafs/libkafs.a tests/tap/libtap.a \
+-	portable/libportable.a $(KAFS_LIBS)
++	util/libutil.a portable/libportable.a $(KAFS_LIBS)
+ else
+     tests_kafs_basic_LDADD = portable/libportable.a $(KAFS_LIBS)
+     tests_kafs_haspag_t_LDADD = tests/tap/libtap.a portable/libportable.a \
