@@ -1,7 +1,7 @@
 Index: kstart/framework.c
 ===================================================================
---- kstart.orig/framework.c	2021-03-19 05:19:10.562835287 +0000
-+++ kstart/framework.c	2021-03-19 05:19:10.534834372 +0000
+--- kstart.orig/framework.c	2021-03-19 06:11:40.717783492 +0000
++++ kstart/framework.c	2021-03-19 06:11:40.689782576 +0000
 @@ -309,13 +309,15 @@
       */
      if (config->command != NULL && config->do_aklog) {
@@ -25,8 +25,8 @@ Index: kstart/framework.c
  
 Index: kstart/kafs/kafs.c
 ===================================================================
---- kstart.orig/kafs/kafs.c	2021-03-19 05:19:10.562835287 +0000
-+++ kstart/kafs/kafs.c	2021-03-19 05:22:34.381496758 +0000
+--- kstart.orig/kafs/kafs.c	2021-03-19 06:11:40.717783492 +0000
++++ kstart/kafs/kafs.c	2021-03-19 06:35:47.889151831 +0000
 @@ -52,6 +52,9 @@
  #include <sys/ioctl.h>
  #include <sys/stat.h>
@@ -60,7 +60,7 @@ Index: kstart/kafs/kafs.c
   * Probe to see if AFS is available and we can make system calls successfully.
   * This just attempts the set token system call with an empty token structure,
   * which will be a no-op in the kernel.
-@@ -180,16 +199,26 @@
+@@ -180,16 +199,27 @@
  
  
  /*
@@ -73,6 +73,7 @@ Index: kstart/kafs/kafs.c
  {
 -    struct ViceIoctl iob;
 +    const char *akunlog = NULL;
++    const char **args   = NULL;
 +    pid_t child = 0;
 +    int *status = 0;
 +
@@ -81,7 +82,7 @@ Index: kstart/kafs/kafs.c
 +        akunlog = "/usr/bin/unlog";
 +    }
 +
-+    child = command_start(akunlog, status);
++    child = command_start(akunlog, args);
 +    if (child < 0) {
 +        syswarn("unable to run command %s", akunlog);
 +    }
@@ -96,8 +97,8 @@ Index: kstart/kafs/kafs.c
  }
 Index: kstart/portable/k_haspag.c
 ===================================================================
---- kstart.orig/portable/k_haspag.c	2021-03-19 05:19:10.562835287 +0000
-+++ kstart/portable/k_haspag.c	2021-03-19 05:19:10.538834503 +0000
+--- kstart.orig/portable/k_haspag.c	2021-03-19 06:11:40.717783492 +0000
++++ kstart/portable/k_haspag.c	2021-03-19 06:11:40.689782576 +0000
 @@ -44,6 +44,15 @@
      gid_t *groups;
      uint32_t pag, g0, g1, hi, lo;
@@ -126,8 +127,8 @@ Index: kstart/portable/k_haspag.c
          return 0;
 Index: kstart/portable/kafs.h
 ===================================================================
---- kstart.orig/portable/kafs.h	2021-03-19 05:19:10.562835287 +0000
-+++ kstart/portable/kafs.h	2021-03-19 05:19:10.538834503 +0000
+--- kstart.orig/portable/kafs.h	2021-03-19 06:11:40.717783492 +0000
++++ kstart/portable/kafs.h	2021-03-19 06:11:40.693782707 +0000
 @@ -70,6 +70,7 @@
      short in_size;
      short out_size;
