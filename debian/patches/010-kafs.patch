@@ -1,7 +1,7 @@
 Index: kstart/framework.c
 ===================================================================
---- kstart.orig/framework.c	2021-03-18 07:01:46.109092253 +0000
-+++ kstart/framework.c	2021-03-18 07:01:46.081091346 +0000
+--- kstart.orig/framework.c	2021-03-19 05:19:10.562835287 +0000
++++ kstart/framework.c	2021-03-19 05:19:10.534834372 +0000
 @@ -309,13 +309,15 @@
       */
      if (config->command != NULL && config->do_aklog) {
@@ -25,9 +25,19 @@ Index: kstart/framework.c
  
 Index: kstart/kafs/kafs.c
 ===================================================================
---- kstart.orig/kafs/kafs.c	2021-03-18 07:01:46.109092253 +0000
-+++ kstart/kafs/kafs.c	2021-03-18 07:01:46.081091346 +0000
-@@ -129,6 +129,22 @@
+--- kstart.orig/kafs/kafs.c	2021-03-19 05:19:10.562835287 +0000
++++ kstart/kafs/kafs.c	2021-03-19 05:22:34.381496758 +0000
+@@ -52,6 +52,9 @@
+ #include <sys/ioctl.h>
+ #include <sys/stat.h>
+ 
++#include <util/command.h>
++#include <util/messages.h>
++
+ /* Used for unused parameters to silence gcc warnings. */
+ #define UNUSED __attribute__((__unused__))
+ 
+@@ -129,6 +132,22 @@
  
  
  /*
@@ -42,7 +52,7 @@ Index: kstart/kafs/kafs.c
 +    code = stat("/proc/fs/afs", &status);
 +    if (code == 0)
 +       have_kAFS = 1;
-+    return haveKAFS;
++    return have_kAFS;
 +}
 +
 +
@@ -50,7 +60,7 @@ Index: kstart/kafs/kafs.c
   * Probe to see if AFS is available and we can make system calls successfully.
   * This just attempts the set token system call with an empty token structure,
   * which will be a no-op in the kernel.
-@@ -180,16 +196,26 @@
+@@ -180,16 +199,26 @@
  
  
  /*
@@ -62,18 +72,18 @@ Index: kstart/kafs/kafs.c
  k_unlog(void)
  {
 -    struct ViceIoctl iob;
-+    const char *unlog = NULL;
++    const char *akunlog = NULL;
 +    pid_t child = 0;
-+    int status = 0;
++    int *status = 0;
 +
 +    akunlog = getenv("AKUNLOG");
 +    if (akunlog == NULL) {
 +        akunlog = "/usr/bin/unlog";
 +    }
 +
-+    child = command_start(akunlog);
++    child = command_start(akunlog, status);
 +    if (child < 0) {
-+        syswarn("unable to run command %s", unlog);
++        syswarn("unable to run command %s", akunlog);
 +    }
 +    command_finish(child, status);
  
@@ -86,8 +96,8 @@ Index: kstart/kafs/kafs.c
  }
 Index: kstart/portable/k_haspag.c
 ===================================================================
---- kstart.orig/portable/k_haspag.c	2021-03-18 07:01:46.109092253 +0000
-+++ kstart/portable/k_haspag.c	2021-03-18 07:02:33.514627996 +0000
+--- kstart.orig/portable/k_haspag.c	2021-03-19 05:19:10.562835287 +0000
++++ kstart/portable/k_haspag.c	2021-03-19 05:19:10.538834503 +0000
 @@ -44,6 +44,15 @@
      gid_t *groups;
      uint32_t pag, g0, g1, hi, lo;
@@ -116,8 +126,8 @@ Index: kstart/portable/k_haspag.c
          return 0;
 Index: kstart/portable/kafs.h
 ===================================================================
---- kstart.orig/portable/kafs.h	2021-03-18 07:01:46.109092253 +0000
-+++ kstart/portable/kafs.h	2021-03-18 07:01:46.085091475 +0000
+--- kstart.orig/portable/kafs.h	2021-03-19 05:19:10.562835287 +0000
++++ kstart/portable/kafs.h	2021-03-19 05:19:10.538834503 +0000
 @@ -70,6 +70,7 @@
      short in_size;
      short out_size;
