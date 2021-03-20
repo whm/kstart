@@ -5,7 +5,7 @@ kstart (4.2-3) unstable; urgency=medium
     - Call an external program to "unlog".  This avoides attempting
       to use pioctls.
 
- -- Bill MacAllister <bill@ca-zephyr.org>  Wed, 17 Mar 2021 07:26:28 +0000
+ -- Bill MacAllister <bill@ca-zephyr.org>  Sat, 20 Mar 2021 23:33:51 +0000
 
 kstart (4.2-2) unstable; urgency=medium
 
