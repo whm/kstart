@@ -8,7 +8,7 @@ Index: kstart/framework.c
          if (k_hasafs()) {
 -            if (k_setpag() < 0) {
 -                syswarn("unable to create PAG");
-+            if (!has_kAFS()) {
++            if (!k_has_kAFS()) {
 +                if (k_setpag() < 0) {
 +                    syswarn("unable to create PAG");
 +                    exit_cleanup(ctx, config, 1);
@@ -44,7 +44,7 @@ Index: kstart/kafs/kafs.c
 + * Check to see whether kAFS is available.
 + */
 +int
-+has_kAFS(void)
++k_has_kAFS(void)
 +{
 +    struct stat status;
 +    int code, have_kAFS = 0;
@@ -108,7 +108,7 @@ Index: kstart/portable/k_haspag.c
 +     * aklog-kafs was used to acquire tokens and a PAG was not
 +     * created.
 +     */
-+    if (!k_hasafs() || has_kAFS()) {
++    if (!k_hasafs() || k_has_kAFS()) {
 +        return 0;
 +    }
 +
@@ -133,7 +133,7 @@ Index: kstart/portable/kafs.h
      short in_size;
      short out_size;
  };
-+int has_kAFS(void);
++int k_has_kAFS(void);
  int k_hasafs(void);
  int k_pioctl(char *, struct ViceIoctl *, void *, int);
  int k_setpag(void);
@@ -141,7 +141,7 @@ Index: kstart/portable/kafs.h
  int lsetpag(void);
  int lpioctl(char *, int, void *, int);
  # endif
-+# define has_kAFS()
++# define k_has_kAFS()
  # define k_hasafs()           (1)
  # define k_pioctl(p, c, a, f) lpioctl((p), (c), (a), (f))
  # define k_setpag()           lsetpag()
@@ -149,7 +149,7 @@ Index: kstart/portable/kafs.h
  /* Default to a hidden visibility for all portability functions. */
  #pragma GCC visibility push(hidden)
  
-+int has_kAFS(void);
++int k_has_kAFS(void);
  int k_hasafs(void);
  int k_haspag(void);
  int k_pioctl(char *, int, struct ViceIoctl *, int);
@@ -157,7 +157,7 @@ Index: kstart/portable/kafs.h
  /* We have no kafs implementation available. */
  #else
  # undef HAVE_KAFS
-+# define has_kAFS()           (0)
++# define k_has_kAFS()         (0)
  # define k_hasafs()           (0)
  # define k_haspag()           (0)
  # define k_pioctl(p, c, a, f) (errno = ENOSYS, -1)
