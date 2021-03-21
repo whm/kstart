@@ -1,3 +1,9 @@
+kstart (4.2-3~buster1) buster; urgency=medium
+
+  * Buster backport.
+
+ -- Bill MacAllister <bill@ca-zephyr.org>  Sun, 21 Mar 2021 00:07:52 +0000
+
 kstart (4.2-3) unstable; urgency=medium
 
   * Add support for aklog-kafs.
