@@ -1,4 +1,4 @@
-kstart (4.2-3) unstable; urgency=medium
+kstart (4.2-3~bp1) unstable; urgency=medium
 
   * Add support for aklog-kafs.
     - On systems without AFS installed don't attempt to create a PAG.
